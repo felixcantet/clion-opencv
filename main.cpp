@@ -11,7 +11,8 @@ int main()
     double C_Thr = 0.43;    // threshold for coherency
     int LowThr = 35;        // threshold1 for orientation, it ranges from 0 to 180
     int HighThr = 57;       // threshold2 for orientation, it ranges from 0 to 180
-    Mat imgIn = imread("C:\\Users\\felix\\ESGI\\Repos\\clion-opencv\\Images\\daniel-bystedt-fox-splash-200802-v001.jpg", IMREAD_GRAYSCALE);
+    //Mat imgIn = imread("C:\\Users\\felix\\ESGI\\Repos\\clion-opencv\\Images\\daniel-bystedt-fox-splash-200802-v001.jpg", IMREAD_GRAYSCALE);
+    Mat imgIn = imread("..\\Images\\daniel-bystedt-fox-splash-200802-v001.jpg", IMREAD_GRAYSCALE);
     if (imgIn.empty()) //check whether the image is loaded or not
     {
         cout << "ERROR : Image cannot be loaded..!!" << endl;
