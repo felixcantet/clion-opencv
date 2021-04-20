@@ -1,80 +1,189 @@
-
+#include <opencv2/dnn.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
 #include <iostream>
-#include "opencv2/imgproc.hpp"
-#include "opencv2/imgcodecs.hpp"
-using namespace cv;
-using namespace std;
-void calcGST(const Mat& inputImg, Mat& imgCoherencyOut, Mat& imgOrientationOut, int w);
+
+/*  - Afficher la vidéo
+ *  - Afficher le traçage sur les doigts/mains (skelette)
+ *
+ *  TODO Pour ce soir :
+ *  - Pouvoir dire l'état de la main (nb doigt, fermé, ouvert, bouge, symbole ?)
+ *      - Gauche ou droite
+ *  - Nombre de mains
+ *
+ *  TODO :
+ *  - Controler le cursor sans la souris
+ *  - Créer des "inputs" pour utiliser la souris
+ */
+
+float DELAY;
+const int POSE_PAIRS[20][2] =
+        {
+                {0,1}, {1,2}, {2,3}, {3,4},         // thumb
+                {0,5}, {5,6}, {6,7}, {7,8},         // index
+                {0,9}, {9,10}, {10,11}, {11,12},    // middle
+                {0,13}, {13,14}, {14,15}, {15,16},  // ring
+                {0,17}, {17,18}, {18,19}, {19,20}   // small
+        };
+
+cv::Mat frame;
+
+cv::Rect handRoi;
+
+std::string protoFile = "../Hand/pose_deploy.prototxt";
+std::string weightsFile = "../Hand/pose_iter_102000.caffemodel";
+
+void CaptureHand(cv::dnn::Net& net);
+void DisplayVideo(const char*, cv::dnn::Net& net);
+
 int main()
 {
-    int W = 52;             // window size is WxW
-    double C_Thr = 0.43;    // threshold for coherency
-    int LowThr = 35;        // threshold1 for orientation, it ranges from 0 to 180
-    int HighThr = 57;       // threshold2 for orientation, it ranges from 0 to 180
-    //Mat imgIn = imread("C:\\Users\\felix\\ESGI\\Repos\\clion-opencv\\Images\\daniel-bystedt-fox-splash-200802-v001.jpg", IMREAD_GRAYSCALE);
-    Mat imgIn = imread("..\\Images\\daniel-bystedt-fox-splash-200802-v001.jpg", IMREAD_GRAYSCALE);
-    if (imgIn.empty()) //check whether the image is loaded or not
-    {
-        cout << "ERROR : Image cannot be loaded..!!" << endl;
-        return -1;
-    }
-    Mat imgCoherency, imgOrientation;
-    calcGST(imgIn, imgCoherency, imgOrientation, W);
-    Mat imgCoherencyBin;
-    imgCoherencyBin = imgCoherency > C_Thr;
-    Mat imgOrientationBin;
-    inRange(imgOrientation, Scalar(LowThr), Scalar(HighThr), imgOrientationBin);
-    Mat imgBin;
-    imgBin = imgCoherencyBin & imgOrientationBin;
-    normalize(imgCoherency, imgCoherency, 0, 255, NORM_MINMAX);
-    normalize(imgOrientation, imgOrientation, 0, 255, NORM_MINMAX);
-    imwrite("..\\Images\\result.jpg", 0.5*(imgIn + imgBin));
-    imwrite("Coherency.jpg", imgCoherency);
-    imwrite("Orientation.jpg", imgOrientation);
+    DELAY = (1.0f/60.0f) * 1000.0f;
+    std::cout << "Delay is : " << DELAY << std::endl;
+
+    cv::dnn::Net net = cv::dnn::readNetFromCaffe(protoFile, weightsFile);
+
+    //CaptureHand(net);
+
+    DisplayVideo(nullptr, net);
+
     return 0;
 }
-void calcGST(const Mat& inputImg, Mat& imgCoherencyOut, Mat& imgOrientationOut, int w)
-{
-    Mat img;
-    inputImg.convertTo(img, CV_32F);
-    // GST components calculation (start)
-    // J =  (J11 J12; J12 J22) - GST
-    Mat imgDiffX, imgDiffY, imgDiffXY;
-    Sobel(img, imgDiffX, CV_32F, 1, 0, 3);
-    Sobel(img, imgDiffY, CV_32F, 0, 1, 3);
-    multiply(imgDiffX, imgDiffY, imgDiffXY);
-    Mat imgDiffXX, imgDiffYY;
-    multiply(imgDiffX, imgDiffX, imgDiffXX);
-    multiply(imgDiffY, imgDiffY, imgDiffYY);
-    Mat J11, J22, J12;      // J11, J22 and J12 are GST components
-    boxFilter(imgDiffXX, J11, CV_32F, Size(w, w));
-    boxFilter(imgDiffYY, J22, CV_32F, Size(w, w));
-    boxFilter(imgDiffXY, J12, CV_32F, Size(w, w));
-    // GST components calculation (stop)
-    // eigenvalue calculation (start)
-    // lambda1 = 0.5*(J11 + J22 + sqrt((J11-J22)^2 + 4*J12^2))
-    // lambda2 = 0.5*(J11 + J22 - sqrt((J11-J22)^2 + 4*J12^2))
-    Mat tmp1, tmp2, tmp3, tmp4;
-    tmp1 = J11 + J22;
-    tmp2 = J11 - J22;
-    multiply(tmp2, tmp2, tmp2);
-    multiply(J12, J12, tmp3);
-    sqrt(tmp2 + 4.0 * tmp3, tmp4);
-    Mat lambda1, lambda2;
-    lambda1 = tmp1 + tmp4;
-    lambda1 = 0.5*lambda1;      // biggest eigenvalue
-    lambda2 = tmp1 - tmp4;
-    lambda2 = 0.5*lambda2;      // smallest eigenvalue
-    // eigenvalue calculation (stop)
-    // Coherency calculation (start)
-    // Coherency = (lambda1 - lambda2)/(lambda1 + lambda2)) - measure of anisotropism
-    // Coherency is anisotropy degree (consistency of local orientation)
-    divide(lambda1 - lambda2, lambda1 + lambda2, imgCoherencyOut);
-    // Coherency calculation (stop)
-    // orientation angle calculation (start)
-    // tan(2*Alpha) = 2*J12/(J22 - J11)
-    // Alpha = 0.5 atan2(2*J12/(J22 - J11))
-    phase(J22 - J11, 2.0*J12, imgOrientationOut, true);
-    imgOrientationOut = 0.5*imgOrientationOut;
-    // orientation angle calculation (stop)
+
+void CaptureHand(cv::dnn::Net& net){
+    cv::VideoCapture cap;
+    cap.open(0);
+
+    cv::Mat frameTmp;
+
+    //si cap n’est pas ouvert, quitter la fonction
+    if (!cap.isOpened())
+        return;
+
+    cap.read(frameTmp);
+
+    int frameWidth = cap.get(cv::CAP_PROP_FRAME_WIDTH);
+    int frameHeight = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+
+    float aspect_ratio = (float)frameWidth/(float)frameHeight;
+
+    int inHeight = 240;
+    int inWidth = int(aspect_ratio*inHeight);
+
+    cv::Rect roi(0,0,inWidth,inHeight);
+
+    while(true)
+    {
+        cv::putText(frameTmp, "Move your hand in the Rect and Press Enter", cv::Point(50, 50), cv::FONT_HERSHEY_COMPLEX, .8, cv::Scalar(255, 50, 0), 2);
+        cv::rectangle(frameTmp, roi.tl(), roi.br(), cv::Scalar(0, 255, 0), 1.f);
+        cv::imshow("Capture Hand", frameTmp);
+
+        int key = cv::waitKey(DELAY);
+        if(key == 13 || key == 27)
+        {
+            std::cout << "Key pressed = " << key << std::endl;
+
+            cv::Mat cropped = frameTmp(roi);
+            handRoi = roi;
+
+//            cv::Mat inpBlob = cv::dnn::blobFromImage(cropped, 1.0 / 255, cv::Size(inWidth, inHeight), cv::Scalar(0, 0, 0), false, false);
+//            net.setInput(inpBlob);
+//            cv::Mat output = net.forward();
+
+            break;
+        }
+
+        cap.read(frameTmp);
+    }
+
+    cap.release();
+    cv::destroyAllWindows();
+}
+
+void DisplayVideo(const char* videoname, cv::dnn::Net& net){
+
+    cv::VideoCapture cap;
+    int nPoints = 22;
+
+    //si videoname n’est pas null, ouvrir la DisplayVideo dans cap, sinon ouvrir la camera 0
+    if (videoname != nullptr)
+        cap.open(videoname);
+    else
+        cap.open(0);
+
+    //si cap n’est pas ouvert, quitter la fonction
+    if (!cap.isOpened())
+        return;
+
+    int frameWidth = cap.get(cv::CAP_PROP_FRAME_WIDTH);
+    int frameHeight = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+    float aspect_ratio = (float)frameWidth/(float)frameHeight;
+    int inHeight = 200;
+    int inWidth = (int(aspect_ratio*inHeight) * 8) / 8;
+
+    //recuperer une image depuis cap et la stocker dans frame
+    cap.read(frame);
+
+    //tant que nextinput n’est pas vide
+    while(!frame.empty())
+    {
+        double t = (double) cv::getTickCount();
+
+        cv::Mat cropped = frame(handRoi);
+
+        cv::Mat inpBlob = cv::dnn::blobFromImage(frame, 1.0 / 255, cv::Size(inWidth, inHeight), cv::Scalar(0, 0, 0), false, false);
+        net.setInput(inpBlob);
+        cv::Mat output = net.forward();
+
+        int H = output.size[2];
+        int W = output.size[3];
+
+        // find the position of the body parts
+        std::vector<cv::Point> points(nPoints);
+        for (int n=0; n < nPoints; n++)
+        {
+            // Probability map of corresponding body's part.
+            cv::Mat probMap(H, W, CV_32F, output.ptr(0,n));
+            cv::resize(probMap, probMap,  cv::Size(frameWidth, frameHeight));
+
+            cv::Point maxLoc;
+            double prob;
+            cv::minMaxLoc(probMap, 0, &prob, 0, &maxLoc);
+            points[n] = maxLoc;
+        }
+
+        int nPairs = sizeof(POSE_PAIRS)/sizeof(POSE_PAIRS[0]);
+
+        for (int n = 0; n < nPairs; n++)
+        {
+            // lookup 2 connected body/hand parts
+            cv::Point2f partA = points[POSE_PAIRS[n][0]];
+            cv::Point2f partB = points[POSE_PAIRS[n][1]];
+
+            if (partA.x<=0 || partA.y<=0 || partB.x<=0 || partB.y<=0)
+                continue;
+
+            cv::line(frame, partA, partB,  cv::Scalar(0,255,255), 8);
+            cv::circle(frame, partA, 8,  cv::Scalar(0,0,255), -1);
+            cv::circle(frame, partB, 8,  cv::Scalar(0,0,255), -1);
+        }
+
+        t = ((double)cv::getTickCount() - t)/cv::getTickFrequency();
+        std::cout << "Time Taken for frame = " << t << std::endl;
+        cv::putText(frame, cv::format("time taken = %.2f sec", t), cv::Point(50, 50), cv::FONT_HERSHEY_COMPLEX, .8, cv::Scalar(255, 50, 0), 2);
+
+        cv::imshow("Video", frame);
+
+        // - > attendre 10ms que l’utilisateur tape une touche, et quitter si il le fait
+        int key = cv::waitKey(DELAY);
+        if(key == 27)
+            break;
+
+        // - > recuperer une nouvelle image et la stocker dans frame
+        cap.read(frame);
+
+    }
+
+    cap.release();
+    cv::destroyAllWindows();
 }
