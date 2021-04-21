@@ -90,7 +90,27 @@ void HandDetection::UpdateOpenedFingers() {
     // Thumb
     opened_fingers[0] = false;
     bool thumb_is_rigth_to_center = false;
+    partA = points[0];
+    partB = points[1];
 
+    if(partA.x < partB.x)
+        thumb_is_rigth_to_center = true;
+
+    //Tips
+    partA = points[4];
+    //Middle of the Finger
+    partB = points[3];
+    if (partA.x>0 && partA.y>0 && partB.x>0 && partB.y>0)
+    {
+        if(partA.x > partB.x && thumb_is_rigth_to_center) {
+            //std::cout << "Finger open " << 4 << std::endl;
+            opened_fingers[0] = true;
+        }
+        else if(partA.x < partB.x && !thumb_is_rigth_to_center) {
+            //std::cout << "Finger open REVERSE" << 4 << std::endl;
+            opened_fingers[0] = true;
+        }
+    }
 
     // Other Fingers
     for(int i = 0; i < 4; ++i)
@@ -105,7 +125,7 @@ void HandDetection::UpdateOpenedFingers() {
             continue;
 
         if(partA.y < partB.y) {
-            std::cout << "Finger open " << fingerTipsIds[i] << std::endl;
+            //std::cout << "Finger open " << fingerTipsIds[i] << std::endl;
             opened_fingers[i + 1] = true;
         }
     }
