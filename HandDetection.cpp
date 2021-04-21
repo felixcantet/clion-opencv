@@ -37,13 +37,15 @@ void HandDetection::DetectHand(const cv::Mat &frame, int inWidth, int inHeight, 
             points[n] = maxLoc;
         }
 
+        UpdateOpenedFingers();
+
         current_frame = 0;
     }
 
     current_frame++;
 }
 
-void HandDetection::DrawHand(cv::Mat &frame) {
+void HandDetection::DrawHand(cv::Mat &frame) const{
     for (int n = 0; n < nPairs; ++n)
     {
         // lookup 2 connected body/hand parts
@@ -67,4 +69,62 @@ void HandDetection::Initialize() {
 
     net.setPreferableTarget(cv::dnn::DNN_TARGET_OPENCL);
     net.setPreferableBackend(cv::dnn::DNN_BACKEND_DEFAULT);
+}
+
+int HandDetection::GetFingerCount() const {
+    int finger_count = 0;
+
+    for (int i = 0; i < 5; ++i) {
+        if(opened_fingers[i])
+            finger_count++;
+    }
+
+    return finger_count;
+}
+
+void HandDetection::UpdateOpenedFingers() {
+
+    cv::Point2f partA;
+    cv::Point2f partB;
+
+    // Thumb
+    opened_fingers[0] = false;
+    bool thumb_is_rigth_to_center = false;
+
+
+    // Other Fingers
+    for(int i = 0; i < 4; ++i)
+    {
+        opened_fingers[i + 1] = false;
+        //Tips
+        partA = points[fingerTipsIds[i]];
+        //Middle of the Finger
+        partB = points[fingerTipsIds[i] - 2];
+
+        if (partA.x<=0 || partA.y<=0 || partB.x<=0 || partB.y<=0)
+            continue;
+
+        if(partA.y < partB.y) {
+            std::cout << "Finger open " << fingerTipsIds[i] << std::endl;
+            opened_fingers[i + 1] = true;
+        }
+    }
+}
+
+bool HandDetection::GetHandOpened() const {
+    bool isOpen = true;
+
+    for (int i = 0; i < 5; ++i) {
+        if(!opened_fingers[i])
+        {
+            isOpen = false;
+            break;
+        }
+    }
+
+    return isOpen;
+}
+
+bool HandDetection::GetFingerOpened(FingerType type) const {
+    return opened_fingers[(int)type];
 }
