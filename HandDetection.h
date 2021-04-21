@@ -42,8 +42,8 @@ private:
 
     cv::Mat output;
 
-    bool opened_fingers[5] = {0, 0, 0, 0, 0};
-    bool previous_opened_fingers[5] = {0, 0, 0, 0, 0};
+    std::array<bool, 5> opened_fingers = {0, 0, 0, 0, 0};
+    std::array<bool, 5> previous_opened_fingers = {0, 0, 0, 0, 0};
 
     void UpdateOpenedFingers();
 
@@ -60,6 +60,14 @@ public:
 
     cv::Point GetHandOffset() const {
         return offset;
+    }
+
+    const std::array<bool, 5> GetPreivousOpenedFingers() const {
+        return this->previous_opened_fingers;
+    }
+
+    const std::array<bool, 5> GetOpenedFingers() const {
+        return this->opened_fingers;
     }
 };
 

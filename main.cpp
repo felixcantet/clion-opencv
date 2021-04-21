@@ -17,24 +17,22 @@
  *  - Créer des "inputs" pour utiliser la souris
  */
 
-const float DELAY = (1.0f/60.0f) * 1000.0f;;
+const float DELAY = (1.0f / 60.0f) * 1000.0f;;
 cv::Mat frame;
 HandDetection handDetection;
-void DisplayVideo(const char*);
-#include <Windows.h>
 
-int main()
-{
+void DisplayVideo(const char *);
+
+int main() {
     std::cout << "Delay is : " << DELAY << std::endl;
 
     handDetection.Initialize();
-
     DisplayVideo(nullptr);
 
     return 0;
 }
 
-void DisplayVideo(const char* videoname){
+void DisplayVideo(const char *videoname) {
 
     cv::VideoCapture cap;
 
@@ -50,49 +48,53 @@ void DisplayVideo(const char* videoname){
 
     std::string winName = "Video";
 
-    cap.set(cv::CAP_PROP_FRAME_WIDTH, 1920);
-    cap.set(cv::CAP_PROP_FRAME_HEIGHT, 1080);
-
     int frameWidth = cap.get(cv::CAP_PROP_FRAME_WIDTH);
     int frameHeight = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
-    float aspect_ratio = (float)frameWidth/(float)frameHeight;
-    int inHeight = 400;
-    int inWidth = int(aspect_ratio*inHeight);
+    float aspect_ratio = (float) frameWidth / (float) frameHeight;
+    int inHeight = 225;
+    int inWidth = int(aspect_ratio * inHeight);
 
 
     //recuperer une image depuis cap et la stocker dans frame
     cap.read(frame);
 
-    while(!frame.empty())
-    {
+    //cv::namedWindow(winName, cv::WINDOW_NORMAL);
+    //cv::setWindowProperty(winName, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
+
+    while (!frame.empty()) {
         std::cout << "====================== \n" << std::endl;
         double t = (double) cv::getTickCount();
 
         cv::flip(frame, frame, 1);
 
-        handDetection.DetectHand(frame, inWidth, inHeight, frameWidth, frameHeight);
+        handDetection.DetectHand(frame , inWidth, inHeight, frameWidth, frameHeight);
         handDetection.DrawHand(frame);
 
-        int fingetCount = handDetection.GetFingerCount();
+        int fingerCount = handDetection.GetFingerCount();
         bool hand_open = handDetection.GetHandOpened();
         bool thumb_open = handDetection.GetFingerOpened(FingerType::THUMB);
 
         InputHandler::PerformInput(handDetection);
 
-        std::cout << "There is : " << fingetCount << " open\n" <<
-                    "The hand is " << (hand_open ? "open" : "close") << "\n" <<
-                    "The thumb is " << (thumb_open ? "open" : "close") << std::endl;
+        std::cout << "There is : " << fingerCount << " open\n" <<
+                  "The hand is " << (hand_open ? "open" : "close") << "\n" <<
+                  "The thumb is " << (thumb_open ? "open" : "close") << std::endl;
 
-        t = ((double)cv::getTickCount() - t)/cv::getTickFrequency();
-        //std::cout << "Time Taken for frame = " << t << std::endl;
-        cv::putText(frame, cv::format("time taken = %.4f sec", t), cv::Point(50, 50), cv::FONT_HERSHEY_COMPLEX, .8, cv::Scalar(255, 50, 0), 2);
+        t = ((double) cv::getTickCount() - t) / cv::getTickFrequency();
+        cv::putText(frame, cv::format("time taken = %.4f sec", t), cv::Point(50, 50), cv::FONT_HERSHEY_COMPLEX, .8,
+                    cv::Scalar(255, 50, 0), 2);
 
         cv::imshow(winName, frame);
 
-        // - > attendre 10ms que l’utilisateur tape une touche, et quitter si il le fait
         int key = cv::waitKey(DELAY);
-        if(key == 27)
+        if (key == 27) // 27 == echap
+        {
+            cv::putText(frame, "ON FERME", cv::Point(1.0f, frameHeight * 0.5f), cv::FONT_HERSHEY_COMPLEX, 2.0f,
+                        cv::Scalar(255, 50, 0), 2);
+            cv::imshow(winName, frame);
+            cv::waitKey(2000);
             break;
+        }
 
         // - > recuperer une nouvelle image et la stocker dans frame
         cap.read(frame);
