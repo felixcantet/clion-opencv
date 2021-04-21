@@ -23,6 +23,7 @@ void HandDetection::DetectHand(const cv::Mat &frame, int inWidth, int inHeight, 
         int H = output.size[2];
         int W = output.size[3];
 
+        cv::Point prev_hand_pos = points[0];
 
         // find the position of the body parts
         for (int n=0; n < nPoints; ++n)
@@ -36,6 +37,9 @@ void HandDetection::DetectHand(const cv::Mat &frame, int inWidth, int inHeight, 
             cv::minMaxLoc(probMap, 0, &prob, 0, &maxLoc);
             points[n] = maxLoc;
         }
+
+        offset = points[0] - prev_hand_pos;
+        //cv::norm(offset);
 
         UpdateOpenedFingers();
 
@@ -83,6 +87,10 @@ int HandDetection::GetFingerCount() const {
 }
 
 void HandDetection::UpdateOpenedFingers() {
+
+    for (int i = 0; i < 5; ++i) {
+        previous_opened_fingers[i] = opened_fingers[i];
+    }
 
     cv::Point2f partA;
     cv::Point2f partB;

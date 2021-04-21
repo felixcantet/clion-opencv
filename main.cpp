@@ -2,14 +2,17 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
 #include <iostream>
-#include "HandDetection.h"
 
-/*  TODO Pour ce soir :
- *  - Pouvoir dire l'état de la main (nb doigt, fermé, ouvert, bouge, symbole ?)
+#include "HandDetection.h"
+#include "InputHandler.h"
+
+/*  TODO :
+ *  - Pouvoir dire l'état de la main (bouge, symbole ?)
  *      - Gauche ou droite
  *  - Nombre de mains
  *
- *  TODO :
+ *  - Optimisation
+ *
  *  - Controler le cursor sans la souris
  *  - Créer des "inputs" pour utiliser la souris
  */
@@ -20,44 +23,12 @@ HandDetection handDetection;
 void DisplayVideo(const char*);
 #include <Windows.h>
 
-void LeftClick ( )
-{
-    INPUT    Input={0};
-    // left down
-    Input.type      = INPUT_MOUSE;
-    Input.mi.dwFlags  = MOUSEEVENTF_LEFTDOWN;
-    ::SendInput(1,&Input,sizeof(INPUT));
-
-    // left up
-    ::ZeroMemory(&Input,sizeof(INPUT));
-    Input.type      = INPUT_MOUSE;
-    Input.mi.dwFlags  = MOUSEEVENTF_LEFTUP;
-    ::SendInput(1,&Input,sizeof(INPUT));
-}
-
-void RightClick ( )
-{
-    INPUT    Input={0};
-    // right down
-    Input.type      = INPUT_MOUSE;
-    Input.mi.dwFlags  = MOUSEEVENTF_RIGHTDOWN;
-    ::SendInput(1,&Input,sizeof(INPUT));
-
-    // right up
-    ::ZeroMemory(&Input,sizeof(INPUT));
-    Input.type      = INPUT_MOUSE;
-    Input.mi.dwFlags  = MOUSEEVENTF_RIGHTUP;
-    ::SendInput(1,&Input,sizeof(INPUT));
-}
-
 int main()
 {
     std::cout << "Delay is : " << DELAY << std::endl;
 
     handDetection.Initialize();
 
-    SetCursorPos(-500,0);
-    LeftClick();
     DisplayVideo(nullptr);
 
     return 0;
@@ -79,10 +50,13 @@ void DisplayVideo(const char* videoname){
 
     std::string winName = "Video";
 
+    cap.set(cv::CAP_PROP_FRAME_WIDTH, 1920);
+    cap.set(cv::CAP_PROP_FRAME_HEIGHT, 1080);
+
     int frameWidth = cap.get(cv::CAP_PROP_FRAME_WIDTH);
     int frameHeight = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
     float aspect_ratio = (float)frameWidth/(float)frameHeight;
-    int inHeight = 368;
+    int inHeight = 400;
     int inWidth = int(aspect_ratio*inHeight);
 
 
@@ -100,6 +74,14 @@ void DisplayVideo(const char* videoname){
         handDetection.DrawHand(frame);
 
         int fingetCount = handDetection.GetFingerCount();
+        bool hand_open = handDetection.GetHandOpened();
+        bool thumb_open = handDetection.GetFingerOpened(FingerType::THUMB);
+
+        InputHandler::PerformInput(handDetection);
+
+        std::cout << "There is : " << fingetCount << " open\n" <<
+                    "The hand is " << (hand_open ? "open" : "close") << "\n" <<
+                    "The thumb is " << (thumb_open ? "open" : "close") << std::endl;
 
         t = ((double)cv::getTickCount() - t)/cv::getTickFrequency();
         //std::cout << "Time Taken for frame = " << t << std::endl;

@@ -25,6 +25,7 @@ private:
                     {0,13}, {13,14}, {14,15}, {15,16},  // ring
                     {0,17}, {17,18}, {18,19}, {19,20}   // small
             };
+    int nPairs = sizeof(POSE_PAIRS)/sizeof(POSE_PAIRS[0]);
     const int fingerTipsIds[4] = {8, 12, 16, 20};
 
     const std::string protoFile = "../Hand/pose_deploy.prototxt";
@@ -35,14 +36,14 @@ private:
 
     cv::dnn::Net net;
 
-    int nPairs = sizeof(POSE_PAIRS)/sizeof(POSE_PAIRS[0]);
-
     const int nPoints = 22;
     std::vector<cv::Point> points;
+    cv::Point offset;
 
     cv::Mat output;
 
     bool opened_fingers[5] = {0, 0, 0, 0, 0};
+    bool previous_opened_fingers[5] = {0, 0, 0, 0, 0};
 
     void UpdateOpenedFingers();
 
@@ -56,6 +57,10 @@ public:
     bool GetFingerOpened(FingerType) const;
     bool GetHandOpened() const;
     int GetFingerCount() const;
+
+    cv::Point GetHandOffset() const {
+        return offset;
+    }
 };
 
 
