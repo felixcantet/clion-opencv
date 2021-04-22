@@ -15,25 +15,23 @@ void InputHandler::MoveCursor(const cv::Point &dir) {
     }
 }
 
+void InputHandler::SetCursorPosition(const cv::Point &pos) {
+    SetCursorPos(pos.x, pos.y);
+}
+
 void InputHandler::PerformInput(const HandDetection& hd) {
+    int x = GetSystemMetrics(SM_CXSCREEN);
+    int y = GetSystemMetrics(SM_CYSCREEN);
+
+    float ratio = (float)x/(float)y;
 
     // Check si y'a eu un changement
-    bool is_equal = true;
-
-    auto current_finger = hd.GetOpenedFingers();
-    auto previous_finger = hd.GetPreivousOpenedFingers();
-
-    for (int i = 0; i < 5; ++i) {
-        if(previous_finger[i] != current_finger[i])
-        {
-            is_equal = false;
-            break;
-        }
-    }
+    bool is_equal = hd.CheckFingerStateChanged();
 
     InputType type = GetInputTypeFromHand(hd);
     if(type == InputType::MOVE)
-        InputHandler::MoveCursor(hd.GetHandOffset());
+        //InputHandler::SetCursorPosition(hd.GetHandPosition() * ratio);
+        InputHandler::MoveCursor(hd.GetHandOffset() * ratio);
 
     // Si equal ==> return
     if(is_equal) {
@@ -47,11 +45,11 @@ void InputHandler::PerformInput(const HandDetection& hd) {
             break;
 
         case LEFT_CLICK:
-            LeftClick();
+            //InputHandler::LeftClick();
             break;
 
         case RIGHT_CLICK:
-            RightClick();
+            //InputHandler::RightClick();
             break;
 
         case QUIT:
@@ -62,14 +60,19 @@ void InputHandler::PerformInput(const HandDetection& hd) {
 
 InputType InputHandler::GetInputTypeFromHand(const HandDetection &hd) {
 
-    //auto current_finger = hd.GetOpenedFingers();
     int finger_count = hd.GetFingerCount();
 
     if(hd.GetFingerOpened(FingerType::INDEX) && finger_count == 2)
         return InputType::MOVE;
 
-    if(finger_count == 1 && hd.GetFingerOpened(FingerType::THUMB))
-        return InputType::QUIT;
+    if(finger_count >= 5)
+        return InputType::LEFT_CLICK;
+
+    if(finger_count == 0)
+        return InputType::RIGHT_CLICK;
+
+    //if(finger_count == 1 && hd.GetFingerOpened(FingerType::THUMB))
+    //    return InputType::QUIT;
 
     return InputType::NONE;
 }
@@ -117,3 +120,5 @@ void InputHandler::EscapeKey() {
     Input.ki.dwFlags = KEYEVENTF_KEYUP;
     ::SendInput(1, &Input, sizeof(INPUT));
 }
+
+

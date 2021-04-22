@@ -15,10 +15,13 @@ enum InputType{
 
 struct InputHandler {
 
-    static void MoveCursor(const cv::Point& dir);
-    static void PerformInput(const HandDetection& hd);//const bool* previous_finger, const bool* current_finger);
+    static void PerformInput(const HandDetection& hd);
 
 private:
+
+    static void MoveCursor(const cv::Point& dir);
+    static void SetCursorPosition(const cv::Point& pos);
+
     static void LeftClick();
     static void RightClick();
 

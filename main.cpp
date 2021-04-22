@@ -3,6 +3,8 @@
 #include <opencv2/highgui.hpp>
 #include <iostream>
 
+//#include <Python.h>
+
 #include "HandDetection.h"
 #include "InputHandler.h"
 
@@ -17,22 +19,27 @@
  *  - Créer des "inputs" pour utiliser la souris
  */
 
-const float DELAY = (1.0f / 60.0f) * 1000.0f;;
-cv::Mat frame;
-HandDetection handDetection;
+const float DELAY = (1.0f / 60.0f) * 1000.0f;
 
-void DisplayVideo(const char *);
+
+void DisplayVideo(const char *, HandDetection& handDetection);
 
 int main() {
     std::cout << "Delay is : " << DELAY << std::endl;
 
+    //Py_Initialize();
+
+    HandDetection handDetection;
+
     handDetection.Initialize();
-    DisplayVideo(nullptr);
+    DisplayVideo(nullptr, handDetection);
+
+    //Py_Finalize();
 
     return 0;
 }
 
-void DisplayVideo(const char *videoname) {
+void DisplayVideo(const char *videoname, HandDetection& handDetection) {
 
     cv::VideoCapture cap;
 
@@ -54,6 +61,7 @@ void DisplayVideo(const char *videoname) {
     int inHeight = 225;
     int inWidth = int(aspect_ratio * inHeight);
 
+    cv::Mat frame;
 
     //recuperer une image depuis cap et la stocker dans frame
     cap.read(frame);

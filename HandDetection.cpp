@@ -2,7 +2,6 @@
 #include "HandDetection.h"
 
 HandDetection::HandDetection() {
-    points = std::vector<cv::Point>(nPoints);
     current_frame = 0;
 
     net = cv::dnn::readNetFromCaffe(protoFile, weightsFile);
@@ -66,7 +65,6 @@ void HandDetection::DrawHand(cv::Mat &frame) const{
 }
 
 void HandDetection::Initialize() {
-    points = std::vector<cv::Point>(nPoints);
     current_frame = 0;
 
     net = cv::dnn::readNetFromCaffe(protoFile, weightsFile);

@@ -37,7 +37,7 @@ private:
     cv::dnn::Net net;
 
     const int nPoints = 22;
-    std::vector<cv::Point> points;
+    std::array<cv::Point, 22> points;
     cv::Point offset;
 
     cv::Mat output;
@@ -62,12 +62,25 @@ public:
         return offset;
     }
 
-    const std::array<bool, 5> GetPreivousOpenedFingers() const {
+    const std::array<bool, 5>& GetPreviousOpenedFingers() const {
         return this->previous_opened_fingers;
     }
 
-    const std::array<bool, 5> GetOpenedFingers() const {
+    const std::array<bool, 5>& GetOpenedFingers() const {
         return this->opened_fingers;
+    }
+
+    cv::Point GetHandPosition() const{
+        std::cout << "Hand is at : " << points[0] << std::endl;
+        return points[0];
+    };
+
+    bool CheckFingerStateChanged() const {
+        for (int i = 0; i < 5; ++i)
+            if(previous_opened_fingers[i] != opened_fingers[i])
+                return false;
+
+        return true;
     }
 };
 
